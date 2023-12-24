@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capital Gain Calculator</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+</head>
+<body>
+
+<div>
+    <h2>Capital Gain Calculator</h2>
+
+    <form id="capital-gain-form">
+        <table class="table">
+            <thead class="table table-dark">
+                <tr>
+                    <th>Nom</th>
+                    <th>PBR</th>
+                    <th>FNACC</th>
+                    <th>JVM</th>
+                    <th>Dette</th>
+                    <th>Action</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Rows will be added dynamically here -->
+            </tbody>
+        </table>
+
+        <div>
+            <button type="button" id="addRowButton" class="btn btn-dark">Add Row</button>
+            <button type="button" onclick="calculate()" class="btn btn-dark">Calculate</button>
+        </div>
+    </form>
+
+    <div id="resultsContainer" class="mt-4">
+        <h3>Capital Gain Results</h3>
+        <table class="table table-bordered" id="resultsTable">
+            <thead>
+                <tr>
+                    <th>Total Capital Gain</th>
+                </tr>
+            </thead>
+            <tbody>
+                <!-- Results will be inserted here -->
+            </tbody>
+            
+        </table>
+
+        <button type="button" onclick="calculateImpact()" class="btn btn-dark mt-2">Calculate Impact</button>
+        
+    </div>
+</div>
+
+<script>
+    document.getElementById("addRowButton").addEventListener("click", addRow);
+    addRow(); // Add initial row
+
+    function addRow() {
+        var table = document.getElementById("capital-gain-form").getElementsByTagName("tbody")[0];
+        var newRow = table.insertRow();
+
+        newRow.innerHTML = `
+            <td><input type="text" class="form-control" name="nom"></td>
+            <td><input type="number" class="form-control" name="pbr"></td>
+            <td><input type="number" class="form-control" name="fnacc"></td>
+            <td><input type="number" class="form-control" name="jvm"></td>
+            <td><input type="number" class="form-control" name="dette"></td>
+            <td><button type="button" class="btn btn-sm btn-danger" onclick="deleteRow(this)">Delete</button></td>
+        `;
+    }
+
+    function deleteRow(btn) {
+        var row = btn.parentNode.parentNode;
+        row.parentNode.removeChild(row);
+    }
+
+    function calculate() {
+        var rows = document.getElementById("capital-gain-form").getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+        var totalCapitalGain = 0;
+
+        for (var i = 0; i < rows.length; i++) {
+            var pbr = parseFloat(rows[i].cells[1].getElementsByTagName("input")[0].value) || 0;
+            var jvm = parseFloat(rows[i].cells[3].getElementsByTagName("input")[0].value) || 0;
+
+            var capitalGain = jvm - pbr;
+            totalCapitalGain += capitalGain;
+        }
+
+        var resultsTable = document.getElementById("resultsTable").getElementsByTagName("tbody")[0];
+        resultsTable.innerHTML = `
+            <tr>
+                <td>${totalCapitalGain.toFixed(2)}</td>
+            </tr>
+        `;
+    }
+
+    function calculateImpact() {
+        var rows = document.getElementById("capital-gain-form").getElementsByTagName("tbody")[0].getElementsByTagName("tr");
+        var hypothesisList = "Hypothesis:\n";
+        var totalPBR = 0, totalFNACC = 0, totalJVM = 0, totalDette = 0;
+
+        for (var i = 0; i < rows.length; i++) {
+            var nom = rows[i].cells[0].getElementsByTagName("input")[0].value || "Unnamed";
+            var pbr = parseFloat(rows[i].cells[1].getElementsByTagName("input")[0].value) || 0;
+            var fnacc = parseFloat(rows[i].cells[2].getElementsByTagName("input")[0].value) || 0;
+            var jvm = parseFloat(rows[i].cells[3].getElementsByTagName("input")[0].value) || 0;
+            var dette = parseFloat(rows[i].cells[4].getElementsByTagName("input")[0].value) || 0;
+
+            totalPBR += pbr;
+            totalFNACC += fnacc;
+            totalJVM += jvm;
+            totalDette += dette;
+
+            hypothesisList += `- ${nom}: PBR: ${pbr}, FNACC: ${fnacc}, JVM: ${jvm}, Dette: ${dette}\n`;
+        }
+
+        var totalCapitalGain = 0;
+        for (var i = 0; i < rows.length; i++) {
+            var pbr = parseFloat(rows[i].cells[1].getElementsByTagName("input")[0].value) || 0;
+            var jvm = parseFloat(rows[i].cells[3].getElementsByTagName("input")[0].value) || 0;
+
+            var capitalGain = jvm - pbr;
+            totalCapitalGain += capitalGain;
+        }
+
+        hypothesisList += `\nTotal:\n- PBR: ${totalPBR}, FNACC: ${totalFNACC}, JVM: ${totalJVM}, Dette: ${totalDette}\n`;
+        hypothesisList += `- Total Capital Gain : ${totalCapitalGain.toFixed(2)}\n\n`;
+
+        var taxableCapitalGain = totalCapitalGain / 2; // Only half of capital gain is taxed
+
+        // Individual Tax Calculation (example with combined federal and Quebec rates)
+        var individualTax = calculateIndividualTax(taxableCapitalGain);
+
+        // Corporate Tax Calculation
+        var corporateTax = taxableCapitalGain * 0.5017; // 50.17% on half of the capital gain
+        var additionToCDA = taxableCapitalGain; // The non-taxed half
+        var RDTOH = corporateTax * 0.3817; // Example calculation for RDTOH
+
+        alert(hypothesisList + `Impact for Individual:\n- Taxable Gain: $${taxableCapitalGain.toFixed(2)}\n- Tax Owed: $${individualTax.toFixed(2)}\n\nImpact for Corporation:\n- Taxable Gain: $${taxableCapitalGain.toFixed(2)}\n- Tax Owed: $${corporateTax.toFixed(2)}\n- Addition to CDA: $${additionToCDA.toFixed(2)}\n- RDTOH: $${RDTOH.toFixed(2)}`);
+    }
+
+    function calculateIndividualTax(taxableGain) {
+        var federalBrackets = [53359, 90000, 135000, 250000]; // Pas les bons montants
+        var federalRates = [0.15, 0.20, 0.28, 0.33]; // Pas les bons montants
+
+        var quebecBrackets = [49275, 98540, 119910];
+        var quebecRates = [0.14, 0.19, 0.24, 0.2575];
+
+        var federalTax = calculateTax(taxableGain, federalBrackets, federalRates);
+        var quebecTax = calculateTax(taxableGain, quebecBrackets, quebecRates);
+
+        // Manque les montants personnels de base
+        // Manque abatement provincial
+
+        return federalTax + quebecTax; // Total tax is the sum of federal and Quebec tax
+    }
+
+    function calculateTax(income, brackets, rates) {
+        var tax = 0;
+        var remainingIncome = income;
+
+        for (var i = 0; i < brackets.length; i++) {
+            var bracket = brackets[i];
+            var rate = rates[i];
+            var incomeInBracket = (i === 0) ? Math.min(remainingIncome, bracket) : Math.min(remainingIncome, bracket - brackets[i - 1]);
+            
+            tax += incomeInBracket * rate;
+            remainingIncome -= incomeInBracket;
+
+            if (remainingIncome <= 0) {
+                break;
+            }
+        }
+
+        if (remainingIncome > 0) {
+            tax += remainingIncome * rates[rates.length - 1]; // Apply the highest rate to the remaining income
+        }
+
+        return tax;
+    }
+
+
+</script>
+
+</body>
+</html>
